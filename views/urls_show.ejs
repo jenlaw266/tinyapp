@@ -20,7 +20,18 @@
         <%}%>
 
           </div>
-    <div class="card-footer text-muted"></div>
+      <div class="card-footer text-muted">
+        <h4>Edit:</h4>
+        
+        <form method="POST" action="/urls/<%=shortURL%>/edit">
+          <!-- texbox and button -->
+          <label>Update Long URL</label>
+          <input name="textbox" value="http://"/>
+          <button type="submit" class="btn btn-primary">Submit here!</button>
+        </form>
+
+
+      </div>
   </div>
   <!-- Bootstrap JS -->
   <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
