@@ -12,8 +12,14 @@
       <div class="card-header"></div>
       <div class="card-body">
         <h5 class="card-title">TinyURL for: <%= longURL %></h5>
-        <p class="card-text">Short URL: <a href="/u/<%= shortURL %>"><%= shortURL %></a></p>
-      </div>
+        
+        <% if (longURL) { %>
+          <p class="card-text">Short URL: <a href="/u/<%= shortURL %>"><%= shortURL %> </a> </p>
+        <% } else { %>  
+          <p> no url found</p>
+        <%}%>
+
+          </div>
     <div class="card-footer text-muted"></div>
   </div>
   <!-- Bootstrap JS -->
