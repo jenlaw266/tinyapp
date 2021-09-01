@@ -40,29 +40,26 @@ app.get("/", (req, res) => {
 
 //main page
 app.get("/urls", (req, res) => {
-  res.render("urls_index", { urls: urlDatabase });
+  const templateVars = {
+    username: req.cookies["username"],
+    urls: urlDatabase,
+  };
+  res.render("urls_index", templateVars);
 });
 
-//main page
+//login
 app.post("/urls", (req, res) => {
   const username = req.body.login;
   res.cookie("username", username);
 
-  const templateVars = {
-    username: username,
-    urls: urlDatabase,
-  };
-  res.render("urls_index", templateVars);
+  res.redirect("/urls");
 });
 
 //logout
 app.post("/logout", (req, res) => {
-  res.cookie("username", "");
-  const templateVars = {
-    username: "",
-    urls: urlDatabase,
-  };
-  res.render("urls_index", templateVars);
+  res.clearCookie("username");
+
+  res.redirect("/urls");
 });
 
 //page for adding new url
@@ -74,12 +71,14 @@ app.post("/urls/new", (req, res) => {
 
 //new url
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  const templateVars = { username: req.cookies["username"] };
+  res.render("urls_new", templateVars);
 });
 
 //shortURL page
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
+    username: req.cookies["username"],
     shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL],
   };
