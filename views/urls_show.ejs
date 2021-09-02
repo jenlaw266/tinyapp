@@ -11,9 +11,9 @@
   <div class="card text-center">
       <div class="card-header"></div>
       <div class="card-body">
+        <% if (longURL && shortURL) { %>
         <h5 class="card-title">TinyURL for: <%= longURL %></h5>
         
-        <% if (longURL) { %>
           <p class="card-text">Short URL: <a href="/u/<%= shortURL %>"><%= shortURL %> </a> </p>
         <% } else { %>  
           <p> no url found</p>

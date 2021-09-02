@@ -1,5 +1,11 @@
 const express = require("express");
 const cookieParser = require("cookie-parser");
+const morgan = require("morgan");
+
+const bcrypt = require("bcryptjs");
+// const password = "purple-monkey-dinosaur"; // found in the req.params object
+// const hashedPassword = bcrypt.hashSync(password, 10);
+// console.log(bcrypt.compareSync("purple-monkey-dinosaur", hashedPassword));
 
 const app = express();
 app.use(cookieParser());
@@ -34,6 +40,7 @@ function emailLookUp(inputEmail) {
 }
 
 app.set("view engine", "ejs");
+app.use(morgan("dev"));
 
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -49,26 +56,56 @@ const users = {
     email: "user2@example.com",
     password: "dishwasher-funk",
   },
+  aJ48lW: {
+    id: "aJ48lW",
+    email: "123@123",
+    password: "123",
+  },
 };
 
 const urlDatabase = {
-  b2xVn2: "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com",
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "aJ48lW",
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW",
+  },
+  u6et7r: {
+    longURL: "https://www.yahoo.com",
+    userID: "userRandomID",
+  },
 };
+function urlsForUser(id) {
+  const userURL = {};
+  for (const shortURL in urlDatabase) {
+    if (urlDatabase[shortURL].userID === id) {
+      userURL[shortURL] = urlDatabase[shortURL];
+    }
+  }
+  return userURL;
+}
 
-//main page
+//main page (GET)
 app.get("/urls", (req, res) => {
   const userID = req.cookies["user_id"];
-
-  const templateVars = {
-    user: users[userID],
-    urls: urlDatabase,
-  };
-
-  res.render("urls_index", templateVars);
+  if (userID) {
+    const templateVars = {
+      user: users[userID],
+      urls: urlsForUser(userID),
+    };
+    res.render("urls_index", templateVars);
+  } else {
+    const templateVars = {
+      user: null,
+      urls: null,
+    };
+    res.render("urls_index", templateVars);
+  }
 });
 
-//login page
+//login page (GET)
 app.get("/login", (req, res) => {
   const templateVars = {
     user: users[req.cookies["user_id"]],
@@ -77,8 +114,13 @@ app.get("/login", (req, res) => {
   res.render("urls_login", templateVars);
 });
 
-//login cookie
+//login page (POST)
 app.post("/login", (req, res) => {
+  //happy path
+  if (users[emailLookUp(req.body.email)].password === req.body.password) {
+    res.cookie("user_id", emailLookUp(req.body.email));
+    res.redirect("/urls");
+  }
   //email cannot be found
   if (!emailLookUp(req.body.email)) {
     const templateVars = {
@@ -86,25 +128,23 @@ app.post("/login", (req, res) => {
       error: "email cannot be found",
     };
     res.status(403).render("urls_login", templateVars);
+  } else {
+    //email found but password incorrect
+    const templateVars = {
+      user: users[req.cookies["user_id"]],
+      error: "password is incorrect",
+    };
+    res.status(403).render("urls_login", templateVars);
   }
-  if (users[emailLookUp(req.body.email)].password === req.body.password) {
-    res.cookie("user_id", emailLookUp(req.body.email));
-    res.redirect("/urls");
-  }
-  const templateVars = {
-    user: users[req.cookies["user_id"]],
-    error: "password is incorrect",
-  };
-  res.status(403).render("urls_login", templateVars);
 });
 
-//logout
+//logout (POST)
 app.post("/logout", (req, res) => {
   res.clearCookie("user_id");
   res.redirect("/urls");
 });
 
-//register page
+//register page (GET)
 app.get("/register", (req, res) => {
   const templateVars = {
     user: users[req.cookies["user_id"]],
@@ -113,10 +153,11 @@ app.get("/register", (req, res) => {
   res.render("urls_register", templateVars);
 });
 
-//register page - form
+//register page (POST)
 app.post("/register", (req, res) => {
   const userEmail = req.body.email;
   const userPassword = req.body.password;
+  const hashedPassword = bcrypt.hashSync(userPassword, 10);
 
   //error message - if one of the register input field is empty
   if (!userEmail || !userPassword) {
@@ -155,48 +196,82 @@ app.post("/register", (req, res) => {
   res.redirect("/urls");
 });
 
-//new url generator
+//new url (POST)
 app.post("/urls/new", (req, res) => {
-  const key = generateRandomString();
-  urlDatabase[key] = req.body.longURL;
-  res.redirect(`/urls/${key}`);
+  if (req.cookies["user_id"]) {
+    const key = generateRandomString();
+    //stretch: if key doesn't exist then proceed below
+    urlDatabase[key] = {};
+    urlDatabase[key].longURL = req.body.longURL;
+    urlDatabase[key].userID = req.cookies["user_id"];
+    res.redirect(`/urls/${key}`);
+  } else {
+    res.status(401).end("error: need to login to access tinyapp"); //error for curl POST attempt
+  }
 });
 
-//page for adding new url
+//new url (GET)
 app.get("/urls/new", (req, res) => {
-  const templateVars = { user: users[req.cookies["user_id"]] };
-  res.render("urls_new", templateVars);
+  if (req.cookies["user_id"]) {
+    const templateVars = { user: users[req.cookies["user_id"]] };
+    res.render("urls_new", templateVars);
+  }
+  res.redirect("/login");
 });
 
-//shortURL page
+//shortURL page (GET)
 app.get("/urls/:shortURL", (req, res) => {
+  const urlDatabaseKey = urlDatabase[req.params.shortURL];
+
   const templateVars = {
     user: users[req.cookies["user_id"]],
-    shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL],
+    shortURL:
+      urlDatabaseKey && req.cookies["user_id"] === urlDatabaseKey.userID
+        ? req.params.shortURL
+        : null,
+    longURL: urlDatabaseKey ? urlDatabaseKey.longURL : null,
   };
   res.render("urls_show", templateVars);
 });
 
-//redirect to longURL
+//redirect to longURL (GET)
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
-  res.redirect(longURL);
+  if (urlDatabase[req.params.shortURL]) {
+    const longURL = urlDatabase[req.params.shortURL].longURL;
+    res.redirect(longURL);
+  } else {
+    const templateVars = {
+      user: users[req.cookies["user_id"]],
+      shortURL: req.params.shortURL,
+      longURL: urlDatabase[req.params.shortURL]
+        ? urlDatabase[req.params.shortURL].longURL
+        : null,
+    };
+    res.status(400).render("urls_show", templateVars);
+  }
 });
 
-//delete
+//delete (POST)
 app.post("/urls/:shortURL/delete", (req, res) => {
   const shortURL = req.params.shortURL;
-  delete urlDatabase[shortURL];
-  res.redirect("/urls");
+  if (urlDatabase[shortURL].userID === req.cookies["user_id"]) {
+    delete urlDatabase[shortURL];
+    res.redirect("/urls");
+  } else {
+    res.status(400).end("error: need to login to access tinyapp"); //error for curl POST attempt
+  }
 });
 
-//edit
+//edit (POST)
 app.post("/urls/:shortURL/edit", (req, res) => {
   const longURL = req.body.textbox;
   const shortURL = req.params.shortURL;
-  urlDatabase[shortURL] = longURL;
-  res.redirect("/urls");
+  if (urlDatabase[shortURL].userID === req.cookies["user_id"]) {
+    urlDatabase[shortURL].longURL = longURL;
+    res.redirect("/urls");
+  } else {
+    res.status(400).end("error: need to login to access tinyapp"); //error for curl POST attempt
+  }
 });
 
 app.listen(PORT, () => {
