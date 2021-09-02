@@ -72,17 +72,30 @@ app.get("/urls", (req, res) => {
 app.get("/login", (req, res) => {
   const templateVars = {
     user: users[req.cookies["user_id"]],
+    error: null,
   };
   res.render("urls_login", templateVars);
 });
 
 //login cookie
 app.post("/login", (req, res) => {
+  //email cannot be found
   if (!emailLookUp(req.body.email)) {
-    res.redirect("/register");
+    const templateVars = {
+      user: users[req.cookies["user_id"]],
+      error: "email cannot be found",
+    };
+    res.status(403).render("urls_login", templateVars);
   }
-  res.cookie("user_id", emailLookUp(req.body.email));
-  res.redirect("/urls");
+  if (users[emailLookUp(req.body.email)].password === req.body.password) {
+    res.cookie("user_id", emailLookUp(req.body.email));
+    res.redirect("/urls");
+  }
+  const templateVars = {
+    user: users[req.cookies["user_id"]],
+    error: "password is incorrect",
+  };
+  res.status(403).render("urls_login", templateVars);
 });
 
 //logout
