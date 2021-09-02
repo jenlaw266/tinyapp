@@ -17,14 +17,11 @@
         </div>
           <button type="submit" class="btn btn-outline-dark">Logout</button>
       </form>
-
-      <% } else { %>
-        <form method="POST" action="/urls" class="form-inline">
-          <div class="form-group mx-sm-3">
-            <input name="login" type="text" class="form-control"/>
-          </div>
-            <button type="submit" class="btn btn-outline-dark">Login</button>
-        </form>
+      <% } else { %>        
+       <div>
+        <a href="/register"><button type="submit" class="btn btn-outline-dark">Register</button></a>
+       </div>
+        <a href="/login"><button type="submit" class="btn btn-outline-dark">Login</button></a>
       <% }%>
   </nav>
 </header>

@@ -68,15 +68,21 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
-//login
-app.post("/urls", (req, res) => {
-  const inputEmail = req.body.login;
+//login page
+app.get("/login", (req, res) => {
+  const templateVars = {
+    user: users[req.cookies["user_id"]],
+  };
+  res.render("urls_login", templateVars);
+});
 
-  if (emailLookUp(inputEmail)) {
-    res.cookie("user_id", emailLookUp(inputEmail));
-    res.redirect("/urls");
+//login cookie
+app.post("/login", (req, res) => {
+  if (!emailLookUp(req.body.email)) {
+    res.redirect("/register");
   }
-  res.redirect("/register");
+  res.cookie("user_id", emailLookUp(req.body.email));
+  res.redirect("/urls");
 });
 
 //logout
@@ -136,14 +142,14 @@ app.post("/register", (req, res) => {
   res.redirect("/urls");
 });
 
-//page for adding new url
+//new url generator
 app.post("/urls/new", (req, res) => {
   const key = generateRandomString();
   urlDatabase[key] = req.body.longURL;
   res.redirect(`/urls/${key}`);
 });
 
-//new url
+//page for adding new url
 app.get("/urls/new", (req, res) => {
   const templateVars = { user: users[req.cookies["user_id"]] };
   res.render("urls_new", templateVars);
