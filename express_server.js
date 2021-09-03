@@ -57,7 +57,16 @@ const urlDatabase = {
   },
 };
 
-//main page (GET)
+//home page (GET)
+app.get("/", (req, res) => {
+  if (req.session.user_id) {
+    res.redirect("/urls");
+    return;
+  }
+  res.redirect("/login");
+});
+
+//main page (GET & POST)
 app.get("/urls", (req, res) => {
   const userID = req.session.user_id;
   if (userID) {
@@ -77,11 +86,15 @@ app.get("/urls", (req, res) => {
 
 //login page (GET)
 app.get("/login", (req, res) => {
-  const templateVars = {
-    user: users[req.session.user_id],
-    error: null,
-  };
-  res.render("urls_login", templateVars);
+  if (!req.session.user_id) {
+    const templateVars = {
+      user: users[req.session.user_id],
+      error: null,
+    };
+    res.render("urls_login", templateVars);
+    return;
+  }
+  res.redirect("/urls");
 });
 
 //login page (POST)
@@ -123,16 +136,21 @@ app.post("/login", (req, res) => {
 //logout (POST)
 app.post("/logout", (req, res) => {
   res.clearCookie("session");
+  res.clearCookie("session.sig");
   res.redirect("/urls");
 });
 
 //register page (GET)
 app.get("/register", (req, res) => {
-  const templateVars = {
-    user: users[req.session.user_id],
-    error: null,
-  };
-  res.render("urls_register", templateVars);
+  if (!req.session.user_id) {
+    const templateVars = {
+      user: users[req.session.user_id],
+      error: null,
+    };
+    res.render("urls_register", templateVars);
+    return;
+  }
+  res.redirect("/urls");
 });
 
 //register page (POST)
