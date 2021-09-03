@@ -17,7 +17,7 @@ app.use(morgan("dev"));
 app.use(
   cookieSession({
     name: "session",
-    keys: ["apple"], //could be anything else as well
+    keys: ["apple"], //could be anything else here as well
   })
 );
 
@@ -66,7 +66,7 @@ app.get("/", (req, res) => {
   res.redirect("/login");
 });
 
-//main page (GET & POST)
+//main page (GET)
 app.get("/urls", (req, res) => {
   const userID = req.session.user_id;
   if (userID) {
@@ -101,7 +101,7 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res) => {
   const userID = getUserByEmail(req.body.email, users);
 
-  //already logged in
+  //error - already logged in
   if (req.session.user_id) {
     const templateVars = {
       user: users[req.session.user_id],
@@ -110,7 +110,7 @@ app.post("/login", (req, res) => {
     res.status(403).render("urls_login", templateVars);
     return;
   }
-  //email cannot be found
+  //error - email cannot be found
   if (!userID) {
     const templateVars = {
       user: users[req.session.user_id],
@@ -125,7 +125,7 @@ app.post("/login", (req, res) => {
     res.redirect("/urls");
     return;
   }
-  //email found but password incorrect
+  //error - incorrect password
   const templateVars = {
     user: users[req.session.user_id],
     error: "Error: Password is incorrect",
@@ -159,7 +159,7 @@ app.post("/register", (req, res) => {
   const userPassword = req.body.password;
   const hashedPassword = bcrypt.hashSync(userPassword, 10);
 
-  //error message - already logged in
+  //error - already logged in
   if (req.session.user_id) {
     const templateVars = {
       user: users[req.session.user_id],
@@ -168,7 +168,7 @@ app.post("/register", (req, res) => {
     res.status(400).render("urls_register", templateVars);
     return;
   }
-  //error message - if one of the register input field is empty
+  //error - if one of the register input field is empty
   if (!userEmail || !userPassword) {
     const templateVars = {
       user: users[req.session.user_id],
@@ -177,7 +177,7 @@ app.post("/register", (req, res) => {
     res.status(400).render("urls_register", templateVars);
     return;
   }
-  //error message - if email has already been registered
+  //error - if email has already been registered
   if (getUserByEmail(userEmail, users)) {
     const templateVars = {
       user: users[req.session.user_id],
