@@ -1,5 +1,4 @@
 const express = require("express");
-const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 const bcrypt = require("bcryptjs");
 const cookieSession = require("cookie-session");
@@ -11,7 +10,6 @@ const {
 } = require("./helpers");
 
 const app = express();
-app.use(cookieParser());
 const PORT = 8080; // default port 8080
 
 app.set("view engine", "ejs");
@@ -68,13 +66,13 @@ app.get("/urls", (req, res) => {
       urls: urlsForUser(userID, urlDatabase),
     };
     res.render("urls_index", templateVars);
-  } else {
-    const templateVars = {
-      user: null,
-      urls: null,
-    };
-    res.render("urls_index", templateVars);
+    return;
   }
+  const templateVars = {
+    user: null,
+    urls: null,
+  };
+  res.render("urls_index", templateVars);
 });
 
 //login page (GET)
@@ -88,31 +86,38 @@ app.get("/login", (req, res) => {
 
 //login page (POST)
 app.post("/login", (req, res) => {
-  //happy path
-  if (
-    bcrypt.compareSync(
-      req.body.password,
-      users[getUserByEmail(req.body.email, users)].password
-    )
-  ) {
-    req.session.user_id = getUserByEmail(req.body.email, users);
-    res.redirect("/urls");
+  const userID = getUserByEmail(req.body.email, users);
+
+  //already logged in
+  if (req.session.user_id) {
+    const templateVars = {
+      user: users[req.session.user_id],
+      error: "You are currently logged in",
+    };
+    res.status(403).render("urls_login", templateVars);
+    return;
   }
   //email cannot be found
-  if (!getUserByEmail(req.body.email, users)) {
+  if (!userID) {
     const templateVars = {
       user: users[req.session.user_id],
       error: "email cannot be found",
     };
     res.status(403).render("urls_login", templateVars);
-  } else {
-    //email found but password incorrect
-    const templateVars = {
-      user: users[req.session.user_id],
-      error: "password is incorrect",
-    };
-    res.status(403).render("urls_login", templateVars);
+    return;
   }
+  //happy path
+  if (bcrypt.compareSync(req.body.password, users[userID].password)) {
+    req.session.user_id = userID;
+    res.redirect("/urls");
+    return;
+  }
+  //email found but password incorrect
+  const templateVars = {
+    user: users[req.session.user_id],
+    error: "password is incorrect",
+  };
+  res.status(403).render("urls_login", templateVars);
 });
 
 //logout (POST)
@@ -136,24 +141,6 @@ app.post("/register", (req, res) => {
   const userPassword = req.body.password;
   const hashedPassword = bcrypt.hashSync(userPassword, 10);
 
-  //error message - if one of the register input field is empty
-  if (!userEmail || !hashedPassword) {
-    const templateVars = {
-      user: users[req.session.user_id],
-      error: "one of the field is empty",
-    };
-    res.status(400).render("urls_register", templateVars);
-  }
-
-  //error message - if email has already been registered
-  if (getUserByEmail(userEmail, users)) {
-    const templateVars = {
-      user: users[req.session.user_id],
-      error: "this email has already been registered",
-    };
-    res.status(400).render("urls_register", templateVars);
-  }
-
   //error message - already logged in
   if (req.session.user_id) {
     const templateVars = {
@@ -161,6 +148,25 @@ app.post("/register", (req, res) => {
       error: "You are currently logged in",
     };
     res.status(400).render("urls_register", templateVars);
+    return;
+  }
+  //error message - if one of the register input field is empty
+  if (!userEmail || !userPassword) {
+    const templateVars = {
+      user: users[req.session.user_id],
+      error: "one of the field is empty",
+    };
+    res.status(400).render("urls_register", templateVars);
+    return;
+  }
+  //error message - if email has already been registered
+  if (getUserByEmail(userEmail, users)) {
+    const templateVars = {
+      user: users[req.session.user_id],
+      error: "this email has already been registered",
+    };
+    res.status(400).render("urls_register", templateVars);
+    return;
   }
 
   const id = generateRandomString();
@@ -177,14 +183,14 @@ app.post("/register", (req, res) => {
 app.post("/urls/new", (req, res) => {
   if (req.session.user_id) {
     const key = generateRandomString();
-    //stretch: if key doesn't exist then proceed below
+    //stretch: check if key doesn't exist then proceed below
     urlDatabase[key] = {};
     urlDatabase[key].longURL = req.body.longURL;
     urlDatabase[key].userID = req.session.user_id;
     res.redirect(`/urls/${key}`);
-  } else {
-    res.status(401).end("error: need to login to access tinyapp"); //error for curl POST attempt
+    return;
   }
+  res.status(401).end("error: need to login to access tinyapp"); //error for curl POST attempt
 });
 
 //new url (GET)
@@ -192,40 +198,39 @@ app.get("/urls/new", (req, res) => {
   if (req.session.user_id) {
     const templateVars = { user: users[req.session.user_id] };
     res.render("urls_new", templateVars);
+    return;
   }
   res.redirect("/login");
 });
 
 //shortURL page (GET)
 app.get("/urls/:shortURL", (req, res) => {
-  const urlDatabaseKey = urlDatabase[req.params.shortURL];
-
+  const keyShortURL = urlDatabase[req.params.shortURL];
   const templateVars = {
     user: users[req.session.user_id],
     shortURL:
-      urlDatabaseKey && req.session.user_id === urlDatabaseKey.userID
+      keyShortURL && req.session.user_id === keyShortURL.userID
         ? req.params.shortURL
         : null,
-    longURL: urlDatabaseKey ? urlDatabaseKey.longURL : null,
+    longURL: keyShortURL ? keyShortURL.longURL : null,
   };
   res.render("urls_show", templateVars);
 });
 
 //redirect to longURL (GET)
 app.get("/u/:shortURL", (req, res) => {
-  if (urlDatabase[req.params.shortURL]) {
-    const longURL = urlDatabase[req.params.shortURL].longURL;
+  const shortLink = req.params.shortURL;
+  if (urlDatabase[shortLink]) {
+    const longURL = urlDatabase[shortLink].longURL;
     res.redirect(longURL);
-  } else {
-    const templateVars = {
-      user: users[req.session.user_id],
-      shortURL: req.params.shortURL,
-      longURL: urlDatabase[req.params.shortURL]
-        ? urlDatabase[req.params.shortURL].longURL
-        : null,
-    };
-    res.status(400).render("urls_show", templateVars);
+    return;
   }
+  const templateVars = {
+    user: users[req.session.user_id],
+    shortURL: shortLink,
+    longURL: urlDatabase[shortLink] ? urlDatabase[shortLink].longURL : null,
+  };
+  res.status(400).render("urls_show", templateVars);
 });
 
 //delete (POST)
@@ -234,9 +239,9 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   if (urlDatabase[shortURL].userID === req.session.user_id) {
     delete urlDatabase[shortURL];
     res.redirect("/urls");
-  } else {
-    res.status(400).end("error: need to login to access tinyapp"); //error for curl POST attempt
+    return;
   }
+  res.status(400).end("error: need to login to access tinyapp"); //error for curl POST attempt
 });
 
 //edit (POST)
@@ -246,9 +251,9 @@ app.post("/urls/:shortURL/edit", (req, res) => {
   if (urlDatabase[shortURL].userID === req.session.user_id) {
     urlDatabase[shortURL].longURL = longURL;
     res.redirect("/urls");
-  } else {
-    res.status(400).end("error: need to login to access tinyapp"); //error for curl POST attempt
+    return;
   }
+  res.status(400).end("error: need to login to access tinyapp"); //error for curl POST attempt
 });
 
 app.listen(PORT, () => {

@@ -24,7 +24,7 @@ function getUserByEmail(inputEmail, database) {
       return key;
     }
   }
-  return false; //no email match
+  return undefined; //no email match
 }
 
 function urlsForUser(id, urlDatabase) {
