@@ -92,7 +92,7 @@ app.post("/login", (req, res) => {
   if (req.session.user_id) {
     const templateVars = {
       user: users[req.session.user_id],
-      error: "You are currently logged in",
+      error: "Error: You are currently logged in",
     };
     res.status(403).render("urls_login", templateVars);
     return;
@@ -101,7 +101,7 @@ app.post("/login", (req, res) => {
   if (!userID) {
     const templateVars = {
       user: users[req.session.user_id],
-      error: "email cannot be found",
+      error: "Error: Email cannot be found",
     };
     res.status(403).render("urls_login", templateVars);
     return;
@@ -115,7 +115,7 @@ app.post("/login", (req, res) => {
   //email found but password incorrect
   const templateVars = {
     user: users[req.session.user_id],
-    error: "password is incorrect",
+    error: "Error: Password is incorrect",
   };
   res.status(403).render("urls_login", templateVars);
 });
@@ -145,7 +145,7 @@ app.post("/register", (req, res) => {
   if (req.session.user_id) {
     const templateVars = {
       user: users[req.session.user_id],
-      error: "You are currently logged in",
+      error: "Error: You are currently logged in",
     };
     res.status(400).render("urls_register", templateVars);
     return;
@@ -154,7 +154,7 @@ app.post("/register", (req, res) => {
   if (!userEmail || !userPassword) {
     const templateVars = {
       user: users[req.session.user_id],
-      error: "one of the field is empty",
+      error: "Error: One of the fields is empty",
     };
     res.status(400).render("urls_register", templateVars);
     return;
@@ -163,7 +163,7 @@ app.post("/register", (req, res) => {
   if (getUserByEmail(userEmail, users)) {
     const templateVars = {
       user: users[req.session.user_id],
-      error: "this email has already been registered",
+      error: "Error: This email has already been registered",
     };
     res.status(400).render("urls_register", templateVars);
     return;
@@ -190,7 +190,7 @@ app.post("/urls/new", (req, res) => {
     res.redirect(`/urls/${key}`);
     return;
   }
-  res.status(401).end("error: need to login to access tinyapp"); //error for curl POST attempt
+  res.status(401).end("Error: Need to login to access TinyApp"); //error for curl POST attempt
 });
 
 //new url (GET)
@@ -241,7 +241,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
     res.redirect("/urls");
     return;
   }
-  res.status(400).end("error: need to login to access tinyapp"); //error for curl POST attempt
+  res.status(400).end("Error: Need to login to access TinyApp"); //error for curl POST attempt
 });
 
 //edit (POST)
@@ -253,7 +253,7 @@ app.post("/urls/:shortURL/edit", (req, res) => {
     res.redirect("/urls");
     return;
   }
-  res.status(400).end("error: need to login to access tinyapp"); //error for curl POST attempt
+  res.status(400).end("Error: Need to login to access TinyApp"); //error for curl POST attempt
 });
 
 app.listen(PORT, () => {
